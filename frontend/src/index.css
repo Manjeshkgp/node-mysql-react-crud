@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    background-color: rgb(31, 41, 55);
+    color: rgb(229, 231, 235);
+}
+
+.inputNum::-webkit-inner-spin-button,
+.inputNum::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
