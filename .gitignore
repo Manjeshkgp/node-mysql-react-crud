@@ -1,4 +1,10 @@
-/gpt-advice
+/backend/gpt-advice
+/backend/.env
+/backend/env
 .env
-/node_modules
+/env
+/backend/node_modules
+/frontend/node_modules
+/frontend/.env
+/frontend/env
 /git
