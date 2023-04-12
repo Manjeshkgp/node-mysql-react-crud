@@ -1,12 +1,4 @@
-/backend/gpt-advice
-/backend/node_modules
-/backend/.env
-/backend/env
-
-/git
-/env
+/gpt-advice
 .env
-
-/frontend/node_modules
-/frontend/.env
-/frontend/env
+/node_modules
+/git
