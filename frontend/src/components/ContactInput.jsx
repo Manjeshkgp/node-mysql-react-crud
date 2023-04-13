@@ -43,7 +43,7 @@ const ContactInput = ({
       );
       if (res2.status === 200) {
         const data = await res2.json();
-        dispatch(addContact(data));
+        dispatch(addContact(data[0]));
       }
     }
   };
