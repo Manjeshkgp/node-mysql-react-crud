@@ -8,15 +8,17 @@ export const getEmployeeList = (req, res) => {
   db.query(q, (err, data) => {
     if (err) return res.status(405).json(err.message);
     if (!data) return res.status(505).json("No Data Found");
-    res.status(200).json(data);
+    const result = data.map((d)=>({...d,Contacts:JSON.parse(d.Contacts)}))
+    res.status(200).json(result);
   });
 };
 
 export const addEmployee = (req, res) => {
+  console.log(req.body)
   const {
-    fullName,
+    full_name,
     email,
-    jobTitle,
+    job_title,
     phone,
     address,
     city,
@@ -30,9 +32,9 @@ export const addEmployee = (req, res) => {
   } = req.body;
 
   const values = [
-    fullName,
+    full_name,
     email,
-    jobTitle,
+    job_title,
     phone,
     city,
     state,
@@ -57,11 +59,11 @@ export const addEmployee = (req, res) => {
     }
 
     db.query(
-      `INSERT INTO employee(full_name,email,job_title,phone,address,city,state) VALUES ('${fullName}','${email}','${jobTitle}','${phone}','${address}','${city}','${state}')`,
+      `INSERT INTO employee(full_name,email,job_title,phone,address,city,state) VALUES ('${full_name}','${email}','${job_title}','${phone}','${address}','${city}','${state}')`,
       function (err, result) {
         if (err) {
           db.rollback(function () {
-            return res.status(405).json(err);
+            return res.status(405).json(err.message);
           });
         } else {
           const lastEmployeeId = result.insertId; // Get the last inserted ID
@@ -70,7 +72,7 @@ export const addEmployee = (req, res) => {
             function (err, data) {
               if (err) {
                 db.rollback(function () {
-                  return res.status(405).json(err);
+                  return res.status(405).json(err.message);
                 });
               } else {
                 db.commit(function (err) {
@@ -82,7 +84,7 @@ export const addEmployee = (req, res) => {
                     // console.log(null, data);
                     res
                       .status(200)
-                      .json("Employee and Contact Added Successfully");
+                      .json({msg:"Employee and Contacts Added Successfully",employee_id:lastEmployeeId});
                   }
                 });
               }
@@ -94,20 +96,31 @@ export const addEmployee = (req, res) => {
   });
 };
 
+export const getAllEmployee = (req,res) => {
+  const q = `SELECT a.*,CONCAT("[", GROUP_CONCAT(JSON_OBJECT("contact_id",b.contact_id,"name",b.name,"contact_phone",b.phone,"relationship",b.relationship,"importance",b.importance)),"]") as Contacts from employee a LEFT JOIN employee_contacts b on a.employee_id=b.employee_id GROUP BY a.employee_id`;
+  db.query(q,(err,data)=>{
+    if(err)return res.status(405).json(err.message);
+    if(!data)return res.status(505).json("No Data Found");
+    const result = data.map((d)=>({...d,Contacts:JSON.parse(d.Contacts)}))
+    res.status(200).json(result);
+  })
+}
+
 export const getEmployee = (req, res) => {
   const employee_id = req.params.id;
   const q = `SELECT a.*,CONCAT("[",GROUP_CONCAT( JSON_OBJECT("contact_id",b.contact_id,"name",b.name,"contact_phone",b.phone,"relationship",b.relationship,"importance",b.importance) ),"]") as Contacts from employee a LEFT JOIN employee_contacts b on a.employee_id=b.employee_id WHERE a.employee_id=${employee_id} GROUP BY a.employee_id`;
   db.query(q, (err, data) => {
     if (err) return res.status(405).json(err.message);
     if (!data) return res.status(505).json("No Data Found");
-    res.status(200).json(data);
+    const result = data.map((d)=>({...d,Contacts:JSON.parse(d.Contacts)}))
+    res.status(200).json(result);
   });
 };
 
 export const updateEmployee = (req, res) => {
   const employee_id = req.params.id;
-  const { fullName, email, phone, jobTitle, state, city, address } = req.body;
-  const values = [fullName, email, phone, jobTitle, state, city, address];
+  const { full_name, email, phone, job_title, state, city, address,contactName1,contactPhone1,contactRelation1,contact_id1,contactName2,contactPhone2,contactRelation2,contact_id2 } = req.body;
+  const values = [full_name, email, phone, job_title, state, city, address,contactName1,contactPhone1,contactRelation1,contact_id1,contactName2,contactPhone2,contactRelation2,contact_id2];
   const isNullUndefined = values.some(
     (variable) => variable === null || variable === undefined
   );
@@ -118,17 +131,85 @@ export const updateEmployee = (req, res) => {
   const duplicateCheckQuery = `SELECT employee_id,phone,email FROM employee WHERE (email = ? OR phone = ?)`;
   db.query(duplicateCheckQuery, [email, phone], (err, result) => {
     if (err) {
-      return res.status(405).json(err);
+      return res.status(405).json(err.message);
     }
-    if (result.length > 0 && result[0].employee_id !== employee_id) {
-      //   console.log(result);
+    if (result.length > 0 && result[0].employee_id != employee_id) {
+        console.log(result);
+        console.log(employee_id)
       return res.status(409).json("Email or phone number already exists");
     }
-    const q = `UPDATE employee SET full_name = ?, email = ?, phone = ?, job_title = ?, state = ?, city = ?, address = ? WHERE employee_id = ${employee_id}`;
-    db.query(q, values, (err, result) => {
-      if (err) return res.status(405).json(err);
-      res.status(200).json("Update Done Successfully");
-    });
+    db.beginTransaction((err) => {
+      if (err) {
+        return res.status(405).json(err.message); // Handle error appropriately
+      }
+  
+      const q1 = `
+        UPDATE employee SET
+          full_name = ?,
+          email = ?,
+          phone = ?,
+          job_title = ?,
+          state = ?,
+          city = ?,
+          address = ?
+        WHERE employee_id = ?;
+      `;
+  
+      const q2 = `
+        UPDATE employee_contacts SET
+          name = ?,
+          phone = ?,
+          relationship = ?
+        WHERE contact_id = ?;
+      `;
+  
+      const q3 = `
+        UPDATE employee_contacts SET
+          name = ?,
+          phone = ?,
+          relationship = ?
+        WHERE contact_id = ?;
+      `;
+  
+      const values1 = [full_name, email, phone, job_title, state, city, address, employee_id];
+      const values2 = [contactName1, contactPhone1, contactRelation1, contact_id1];
+      const values3 = [contactName2, contactPhone2, contactRelation2, contact_id2];
+  
+      // Execute the three update queries as part of the transaction
+      db.query(q1, values1, (err) => {
+        if (err) {
+          db.rollback(() => {
+            return res.status(505).json(err.message); // Handle error appropriately
+          });
+        }
+  
+        db.query(q2, values2, (err) => {
+          if (err) {
+            db.rollback(() => {
+              return res.status(505).json(err.message); // Handle error appropriately
+            });
+          }
+  
+          db.query(q3, values3, (err) => {
+            if (err) {
+              db.rollback(() => {
+                return res.status(505).json(err.message); // Handle error appropriately
+              });
+            }
+  
+            db.commit((err) => {
+              if (err) {
+                db.rollback(() => {
+                  return res.status(505).json(err.message); // Handle error appropriately
+                });
+              }
+  
+              res.status(200).json("Update Done Successfully");
+            });
+          });
+        });
+      });
+    })
   });
 };
 

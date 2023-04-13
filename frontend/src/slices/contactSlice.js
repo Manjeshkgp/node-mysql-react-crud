@@ -6,8 +6,8 @@ const initialState = {
 }
 
 const compareByName = (a, b) => {
-  const nameA = a.Name.toLowerCase();
-  const nameB = b.Name.toLowerCase();
+  const nameA = a.full_name.toLowerCase();
+  const nameB = b.full_name.toLowerCase();
 
   if (nameA < nameB) {
     return -1;
@@ -25,12 +25,12 @@ export const contactSlice = createSlice({
   initialState,
   reducers: {
     updateContact: (state,action) => {
-        let indexToUpdate = state.allContacts.findIndex(obj => obj.Number === action.payload.oldObj.Number);
-        state.allContacts[indexToUpdate] = action.payload.newObj;
+        let indexToUpdate = state.allContacts.findIndex(obj => obj.employee_id === action.payload.oldObj.employee_id);
+        state.allContacts[indexToUpdate] = action.payload.contact;
         state.sortedContacts = [...state.allContacts].sort(compareByName);
     },
     deleteContact: (state,action) => {
-      let indexToRemove = state.allContacts.findIndex(obj => obj.Number === action.payload.Number);
+      let indexToRemove = state.allContacts.findIndex(obj => obj.employee_id === action.payload.employee_id);
       if (indexToRemove !== -1) {
         state.allContacts.splice(indexToRemove, 1);
         state.sortedContacts = [...state.allContacts].sort(compareByName)
@@ -40,9 +40,13 @@ export const contactSlice = createSlice({
       state.allContacts.push(action.payload);
       state.sortedContacts = [...state.allContacts].sort(compareByName);
     },
+    addAll: (state,action) => {
+      state.allContacts = action.payload;
+      state.sortedContacts = [...state.allContacts].sort(compareByName);
+    }
   },
 })
 
-export const { updateContact, deleteContact, addContact } = contactSlice.actions;
+export const { updateContact, deleteContact, addContact, addAll } = contactSlice.actions;
 
 export default contactSlice.reducer;
